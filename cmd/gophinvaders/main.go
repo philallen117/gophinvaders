@@ -17,10 +17,21 @@ const (
 	playerSpeed  = 5
 )
 
+type Player struct {
+	LeftX float32
+	TopY  float32
+}
+
+func NewPlayer() Player {
+	return Player{
+		LeftX: screenWidth/2 - playerWidth/2,
+		TopY:  screenHeight - playerHeight - 50,
+	}
+}
+
 // Game implements ebiten.Game interface.
 type Game struct {
-	playerX float32
-	playerY float32
+	Player Player
 }
 
 // Update proceeds the game state.
@@ -28,15 +39,15 @@ type Game struct {
 func (g *Game) Update() error {
 	// Handle left/right arrow keys.
 	if ebiten.IsKeyPressed(ebiten.KeyLeft) || ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
-		g.playerX -= playerSpeed
-		if g.playerX < 0 {
-			g.playerX = 0
+		g.Player.LeftX -= playerSpeed
+		if g.Player.LeftX < 0 {
+			g.Player.LeftX = 0
 		}
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyRight) || ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
-		g.playerX += playerSpeed
-		if g.playerX > screenWidth-playerWidth {
-			g.playerX = screenWidth - playerWidth
+		g.Player.LeftX += playerSpeed
+		if g.Player.LeftX > screenWidth-playerWidth {
+			g.Player.LeftX = screenWidth - playerWidth
 		}
 	}
 	return nil
@@ -49,7 +60,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	ebitenutil.DebugPrint(screen, "hello ebiten")
 
 	// Draw player as a filled rectangle.
-	vector.FillRect(screen, g.playerX, g.playerY, playerWidth, playerHeight, color.White, false)
+	vector.FillRect(screen, g.Player.LeftX, g.Player.TopY, playerWidth, playerHeight, color.White, false)
 }
 
 // Layout takes the outside size (e.g., the window size) and returns the (logical) screen size.
@@ -63,8 +74,7 @@ func main() {
 	ebiten.SetWindowTitle("Hello ebiten")
 
 	game := &Game{
-		playerX: screenWidth/2 - playerWidth/2,
-		playerY: screenHeight - playerHeight - 50,
+		Player: NewPlayer(),
 	}
 
 	if err := ebiten.RunGame(game); err != nil {
