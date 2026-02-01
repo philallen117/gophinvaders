@@ -1,55 +1,104 @@
 package main
 
 import (
-	"image/color"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"golang.org/x/image/colornames"
 )
 
 const (
-	screenWidth  = 800
-	screenHeight = 600
-	playerWidth  = 50
-	playerHeight = 30
-	playerSpeed  = 5
+	screenWidth       = 800
+	screenHeight      = 600
+	playerWidth       = 50
+	playerHeight      = 30
+	playerSpeed       = 5
+	numPlayerBullets  = 10
+	numInvaderBullets = 20
+	bulletSpeed       = 10 // -ve for upward movement for player bullets
+	bulletWidth       = 4
+	bulletHeight      = 10
 )
 
-type Player struct {
-	LeftX float32
-	TopY  float32
-}
-
-func NewPlayer() Player {
-	return Player{
-		LeftX: screenWidth/2 - playerWidth/2,
-		TopY:  screenHeight - playerHeight - 50,
-	}
-}
+var (
+	playerBulletColor  = colornames.White
+	invaderBulletColor = colornames.Red
+)
 
 // Game implements ebiten.Game interface.
 type Game struct {
-	Player Player
+	Player         Player
+	PlayerBullets  [numPlayerBullets]PlayerBullet
+	InvaderBullets [numInvaderBullets]InvaderBullet
+}
+
+func (g *Game) DrawPlayerBullets(screen *ebiten.Image) {
+	for i := range g.PlayerBullets {
+		bullet := &g.PlayerBullets[i]
+		if bullet.Active {
+			vector.FillRect(screen, bullet.LeftX, bullet.TopY, bulletWidth, bulletHeight, playerBulletColor, false)
+		}
+	}
+}
+
+func (g *Game) DrawInvaderBullets(screen *ebiten.Image) {
+	for i := range g.InvaderBullets {
+		bullet := &g.InvaderBullets[i]
+		if bullet.Active {
+			vector.FillRect(screen, bullet.LeftX, bullet.TopY, bulletWidth, bulletHeight, invaderBulletColor, false)
+		}
+	}
+}
+
+func (g *Game) MovePlayerBullets() {
+	for i := range g.PlayerBullets {
+		bullet := &g.PlayerBullets[i]
+		if bullet.Active {
+			bullet.TopY -= bulletSpeed
+			if bullet.TopY <= 0 {
+				bullet.Active = false // Deactivate bullet when it goes off-screen
+			}
+		}
+	}
+}
+
+func (g *Game) MoveInvaderBullets() {
+	for i := range g.InvaderBullets {
+		bullet := &g.InvaderBullets[i]
+		if bullet.Active {
+			bullet.TopY += bulletSpeed
+			if bullet.TopY >= screenHeight {
+				bullet.Active = false // Deactivate bullet when it goes off-screen
+			}
+		}
+	}
 }
 
 // Update proceeds the game state.
 // Update is called every tick (1/60 [s] by default).
 func (g *Game) Update() error {
 	// Handle left/right arrow keys.
-	if ebiten.IsKeyPressed(ebiten.KeyLeft) || ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
-		g.Player.LeftX -= playerSpeed
-		if g.Player.LeftX < 0 {
-			g.Player.LeftX = 0
+	var left = ebiten.IsKeyPressed(ebiten.KeyLeft) || ebiten.IsKeyPressed(ebiten.KeyArrowLeft)
+	var right = ebiten.IsKeyPressed(ebiten.KeyRight) || ebiten.IsKeyPressed(ebiten.KeyArrowRight)
+	g.Player.Move(left, right)
+
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+		for i := range g.PlayerBullets {
+			bullet := &g.PlayerBullets[i]
+			if !bullet.Active {
+				x, y := g.Player.TopMid()
+				bullet.LeftX = x - 2 // Center the bullet (assuming bullet width is 4)
+				bullet.TopY = y
+				bullet.Active = true
+				break
+			}
 		}
+
 	}
-	if ebiten.IsKeyPressed(ebiten.KeyRight) || ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
-		g.Player.LeftX += playerSpeed
-		if g.Player.LeftX > screenWidth-playerWidth {
-			g.Player.LeftX = screenWidth - playerWidth
-		}
-	}
+	g.MovePlayerBullets()
 	return nil
 }
 
@@ -59,8 +108,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// Draw static text.
 	ebitenutil.DebugPrint(screen, "hello ebiten")
 
-	// Draw player as a filled rectangle.
-	vector.FillRect(screen, g.Player.LeftX, g.Player.TopY, playerWidth, playerHeight, color.White, false)
+	g.Player.Draw(screen)
+	g.DrawPlayerBullets(screen)
 }
 
 // Layout takes the outside size (e.g., the window size) and returns the (logical) screen size.

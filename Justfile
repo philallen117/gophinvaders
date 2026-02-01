@@ -14,7 +14,7 @@ lint:
 		golangci-lint run; \
 	else \
 		echo "golangci-lint not found, falling back to go vet"; \
-		echo "To install golangci-lint, run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
+		echo "To install golangci-lint, run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"; \
 		go vet ./...; \
 	fi
 
