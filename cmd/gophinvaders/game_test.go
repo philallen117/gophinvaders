@@ -312,3 +312,163 @@ func TestMultipleBulletsKillMultipleInvaders(t *testing.T) {
 		}
 	})
 }
+
+func TestNewGameInvaderBulletPool(t *testing.T) {
+	game := NewGame(nil)
+
+	if len(game.InvaderBullets) != numInvaderBullets {
+		t.Errorf("InvaderBullets length = %v, want %v", len(game.InvaderBullets), numInvaderBullets)
+	}
+
+	for i, bullet := range game.InvaderBullets {
+		if bullet.Active {
+			t.Errorf("InvaderBullets[%d].Active = true, want false", i)
+		}
+	}
+}
+
+func TestHandleInvaderShootingCounter(t *testing.T) {
+	t.Run("counter increments each frame", func(t *testing.T) {
+		game := &Game{
+			InvaderShootCounter: 0,
+			Invaders:            []Invader{{LeftX: 100, TopY: 50}},
+		}
+
+		game.HandleInvaderShooting()
+
+		if game.InvaderShootCounter != 1 {
+			t.Errorf("InvaderShootCounter = %v, want 1", game.InvaderShootCounter)
+		}
+	})
+
+	t.Run("shooting check happens when counter reaches delay", func(t *testing.T) {
+		game := &Game{
+			InvaderShootCounter: invaderShootDelay - 1,
+			Invaders:            []Invader{{LeftX: 100, TopY: 50}},
+		}
+
+		game.HandleInvaderShooting()
+
+		if game.InvaderShootCounter != 0 {
+			t.Errorf("InvaderShootCounter = %v, want 0 (reset after reaching delay)", game.InvaderShootCounter)
+		}
+	})
+
+	t.Run("no shooting check when counter below delay", func(t *testing.T) {
+		game := &Game{
+			InvaderShootCounter: 5,
+			Invaders:            []Invader{{LeftX: 100, TopY: 50}},
+		}
+		// All bullets inactive - if shooting logic runs, a bullet might become active.
+		initialBulletState := game.InvaderBullets
+
+		game.HandleInvaderShooting()
+
+		// Counter incremented but no shooting occurred.
+		if game.InvaderShootCounter != 6 {
+			t.Errorf("InvaderShootCounter = %v, want 6", game.InvaderShootCounter)
+		}
+		// No bullets should have been activated since we returned early.
+		if game.InvaderBullets != initialBulletState {
+			t.Error("Bullets should not change when counter is below delay")
+		}
+	})
+}
+
+func TestHandleInvaderShootingBulletActivation(t *testing.T) {
+	t.Run("bullet activated at invader bottom center when invader shoots", func(t *testing.T) {
+		game := &Game{
+			InvaderShootCounter: invaderShootDelay - 1,
+			Invaders:            []Invader{{LeftX: 100, TopY: 50}},
+		}
+
+		// Run shooting multiple times until a bullet is activated.
+		// Since shooting is random, we need to loop.
+		maxAttempts := 1000
+		bulletActivated := false
+		for attempt := 0; attempt < maxAttempts; attempt++ {
+			game.InvaderShootCounter = invaderShootDelay - 1
+			game.HandleInvaderShooting()
+
+			for i := range game.InvaderBullets {
+				if game.InvaderBullets[i].Active {
+					bulletActivated = true
+					// Verify bullet position.
+					expectedX := 100 + invaderWidth/2 - bulletWidth/2
+					expectedY := 50 + invaderHeight
+					if game.InvaderBullets[i].LeftX != expectedX {
+						t.Errorf("Bullet LeftX = %v, want %v", game.InvaderBullets[i].LeftX, expectedX)
+					}
+					if game.InvaderBullets[i].TopY != expectedY {
+						t.Errorf("Bullet TopY = %v, want %v", game.InvaderBullets[i].TopY, expectedY)
+					}
+					break
+				}
+			}
+			if bulletActivated {
+				break
+			}
+		}
+
+		if !bulletActivated {
+			t.Error("Expected at least one bullet to be activated within max attempts")
+		}
+	})
+
+	t.Run("no error when all bullets are active", func(t *testing.T) {
+		game := &Game{
+			InvaderShootCounter: invaderShootDelay - 1,
+			Invaders:            []Invader{{LeftX: 100, TopY: 50}},
+		}
+		// Activate all bullets.
+		for i := range game.InvaderBullets {
+			game.InvaderBullets[i].Active = true
+		}
+
+		// This should not panic or error.
+		game.HandleInvaderShooting()
+
+		// All bullets should remain active.
+		for i := range game.InvaderBullets {
+			if !game.InvaderBullets[i].Active {
+				t.Errorf("Bullet %d became inactive", i)
+			}
+		}
+	})
+}
+
+func TestHandleInvaderShootingMultipleInvaders(t *testing.T) {
+	t.Run("multiple invaders can shoot in same frame", func(t *testing.T) {
+		game := &Game{
+			InvaderShootCounter: invaderShootDelay - 1,
+			Invaders: []Invader{
+				{LeftX: 100, TopY: 50},
+				{LeftX: 200, TopY: 50},
+				{LeftX: 300, TopY: 50},
+			},
+		}
+
+		// Run shooting many times to get multiple bullets activated.
+		maxAttempts := 1000
+		activeBulletCount := 0
+		for attempt := 0; attempt < maxAttempts; attempt++ {
+			game.InvaderShootCounter = invaderShootDelay - 1
+			game.HandleInvaderShooting()
+
+			activeBulletCount = 0
+			for i := range game.InvaderBullets {
+				if game.InvaderBullets[i].Active {
+					activeBulletCount++
+				}
+			}
+			// If we get at least 2 bullets active, we've proven multiple can shoot.
+			if activeBulletCount >= 2 {
+				break
+			}
+		}
+
+		if activeBulletCount < 2 {
+			t.Errorf("Expected at least 2 bullets active from multiple invaders, got %d", activeBulletCount)
+		}
+	})
+}

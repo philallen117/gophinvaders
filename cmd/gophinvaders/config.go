@@ -48,7 +48,7 @@ const (
 	invaderMoveDelay            = 30 // frames
 	invaderDropDistance float32 = 20
 	invaderShootDelay           = 60 // frames
-	invaderShootChance  float32 = 5  // percent chance per delay interval per live invader
+	invaderShootChance          = 5  // percent chance per delay interval per live invader
 )
 
 var invaderColor = colornames.Red

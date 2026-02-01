@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand/v2"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -32,14 +33,15 @@ func NewGame(scoreFontFace *text.GoTextFace) *Game {
 
 // Game implements ebiten.Game interface.
 type Game struct {
-	Player             Player
-	PlayerBullets      [numPlayerBullets]PlayerBullet
-	InvaderBullets     [numInvaderBullets]InvaderBullet
-	Invaders           []Invader
-	InvaderDirection   float32 // Positive = right, negative = left
-	InvaderMoveCounter int     // Counts frames until next movement
-	Score              int
-	ScoreFontFace      *text.GoTextFace
+	Player              Player
+	PlayerBullets       [numPlayerBullets]PlayerBullet
+	InvaderBullets      [numInvaderBullets]InvaderBullet
+	Invaders            []Invader
+	InvaderDirection    float32 // Positive = right, negative = left
+	InvaderMoveCounter  int     // Counts frames until next movement
+	InvaderShootCounter int     // Counts frames until next shooting check
+	Score               int
+	ScoreFontFace       *text.GoTextFace
 }
 
 func (g *Game) DrawPlayerBullets(screen *ebiten.Image) {
@@ -53,10 +55,7 @@ func (g *Game) DrawPlayerBullets(screen *ebiten.Image) {
 
 func (g *Game) DrawInvaderBullets(screen *ebiten.Image) {
 	for i := range g.InvaderBullets {
-		bullet := &g.InvaderBullets[i]
-		if bullet.Active {
-			vector.FillRect(screen, bullet.LeftX, bullet.TopY, bulletWidth, bulletHeight, invaderBulletColor, false)
-		}
+		g.InvaderBullets[i].Draw(screen)
 	}
 }
 
@@ -89,13 +88,7 @@ func (g *Game) MovePlayerBullets() {
 
 func (g *Game) MoveInvaderBullets() {
 	for i := range g.InvaderBullets {
-		bullet := &g.InvaderBullets[i]
-		if bullet.Active {
-			bullet.TopY += bulletSpeed
-			if bullet.TopY >= screenHeight {
-				bullet.Active = false // Deactivate bullet when it goes off-screen
-			}
-		}
+		g.InvaderBullets[i].Move()
 	}
 }
 
@@ -165,6 +158,31 @@ func (g *Game) HandleBulletInvaderCollisions() {
 	}
 }
 
+func (g *Game) HandleInvaderShooting() {
+	g.InvaderShootCounter++
+	if g.InvaderShootCounter < invaderShootDelay {
+		return
+	}
+	g.InvaderShootCounter = 0
+
+	// Each invader has a chance to shoot.
+	for i := range g.Invaders {
+		if rand.IntN(100) < invaderShootChance {
+			// Find an inactive bullet in the pool.
+			for j := range g.InvaderBullets {
+				bullet := &g.InvaderBullets[j]
+				if !bullet.Active {
+					x, y := g.Invaders[i].BottomMid()
+					bullet.LeftX = x - bulletWidth/2 // Center the bullet
+					bullet.TopY = y
+					bullet.Active = true
+					break
+				}
+			}
+		}
+	}
+}
+
 // Update proceeds the game state.
 // Update is called every tick (1/60 [s] by default).
 func (g *Game) Update() error {
@@ -187,7 +205,9 @@ func (g *Game) Update() error {
 
 	}
 	g.MovePlayerBullets()
+	g.MoveInvaderBullets()
 	g.HandleBulletInvaderCollisions()
+	g.HandleInvaderShooting()
 	g.MoveInvaders()
 	return nil
 }
@@ -198,6 +218,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.DrawInvaders(screen)
 	g.Player.Draw(screen)
 	g.DrawPlayerBullets(screen)
+	g.DrawInvaderBullets(screen)
 	g.DrawScore(screen)
 }
 

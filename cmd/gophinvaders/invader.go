@@ -25,3 +25,8 @@ func (inv *Invader) Draw(screen *ebiten.Image) {
 func (inv *Invader) Rectangle() (leftX, topY, width, depth float32) {
 	return inv.LeftX, inv.TopY, invaderWidth, invaderHeight
 }
+
+// BottomMid returns the x and y coordinates of the bottom-middle point of the invader.
+func (inv *Invader) BottomMid() (float32, float32) {
+	return inv.LeftX + invaderWidth/2, inv.TopY + invaderHeight
+}

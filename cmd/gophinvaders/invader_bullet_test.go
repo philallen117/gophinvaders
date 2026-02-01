@@ -70,3 +70,41 @@ func TestInvaderBulletRectangle(t *testing.T) {
 		})
 	}
 }
+
+func TestInvaderBulletMove(t *testing.T) {
+	t.Run("active bullet moves down", func(t *testing.T) {
+		bullet := InvaderBullet{LeftX: 100, TopY: 200, Active: true}
+
+		bullet.Move()
+
+		if bullet.TopY != 200+bulletSpeed {
+			t.Errorf("InvaderBullet.Move() TopY = %v, want %v", bullet.TopY, 200+bulletSpeed)
+		}
+		if !bullet.Active {
+			t.Error("InvaderBullet.Move() deactivated an on-screen bullet")
+		}
+	})
+
+	t.Run("inactive bullet does not move", func(t *testing.T) {
+		bullet := InvaderBullet{LeftX: 100, TopY: 200, Active: false}
+
+		bullet.Move()
+
+		if bullet.TopY != 200 {
+			t.Errorf("InvaderBullet.Move() TopY = %v, want %v", bullet.TopY, 200)
+		}
+		if bullet.Active {
+			t.Error("InvaderBullet.Move() activated an inactive bullet")
+		}
+	})
+
+	t.Run("bullet deactivates when off-screen", func(t *testing.T) {
+		bullet := InvaderBullet{LeftX: 100, TopY: screenHeight, Active: true}
+
+		bullet.Move()
+
+		if bullet.Active {
+			t.Error("InvaderBullet.Move() did not deactivate an off-screen bullet")
+		}
+	})
+}
