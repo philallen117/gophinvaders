@@ -1,16 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
-	"github.com/hajimehoshi/ebiten/v2/text"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
-	"golang.org/x/image/font"
 	"golang.org/x/image/font/gofont/goregular"
-	"golang.org/x/image/font/opentype"
 )
 
 // Game implements ebiten.Game interface.
@@ -22,7 +21,7 @@ type Game struct {
 	InvaderDirection   float32 // Positive = right, negative = left
 	InvaderMoveCounter int     // Counts frames until next movement
 	Score              int
-	ScoreFontFace      font.Face
+	ScoreFontFace      *text.GoTextFace
 }
 
 func (g *Game) DrawPlayerBullets(screen *ebiten.Image) {
@@ -51,9 +50,11 @@ func (g *Game) DrawInvaders(screen *ebiten.Image) {
 
 func (g *Game) DrawScore(screen *ebiten.Image) {
 	scoreText := fmt.Sprintf("Score: %d", g.Score)
-	// text.Draw uses baseline positioning, so we need to adjust Y coordinate.
-	// The baseline is roughly at scoreTextY + font height.
-	text.Draw(screen, scoreText, g.ScoreFontFace, int(scoreTextX), int(scoreTextY)+scoreTextFontSize, textColor)
+	// text/v2 uses top-left positioning by default.
+	op := &text.DrawOptions{}
+	op.GeoM.Translate(float64(scoreTextX), float64(scoreTextY))
+	op.ColorScale.ScaleWithColor(textColor)
+	text.Draw(screen, scoreText, g.ScoreFontFace, op)
 }
 
 func (g *Game) MovePlayerBullets() {
@@ -78,6 +79,13 @@ func (g *Game) MoveInvaderBullets() {
 			}
 		}
 	}
+}
+
+// CheckCollision returns true if two rectangles overlap using AABB collision detection.
+// Takes two 4-tuples: (leftX, topY, width, depth) for each rectangle.
+func CheckCollision(x1, y1, w1, h1, x2, y2, w2, h2 float32) bool {
+	// Check if rectangles overlap.
+	return x1 < x2+w2 && x1+w1 > x2 && y1 < y2+h2 && y1+h1 > y2
 }
 
 func (g *Game) MoveInvaders() {
@@ -111,6 +119,34 @@ func (g *Game) MoveInvaders() {
 	}
 }
 
+func (g *Game) HandleBulletInvaderCollisions() {
+	for i := range g.PlayerBullets {
+		bullet := &g.PlayerBullets[i]
+		if !bullet.Active {
+			continue
+		}
+
+		// Get bullet rectangle once for this bullet.
+		bx, by, bw, bh := bullet.Rectangle()
+
+		// Check collision with each invader.
+		// Loop backwards to safely remove invaders during iteration.
+		for j := len(g.Invaders) - 1; j >= 0; j-- {
+			ix, iy, iw, ih := g.Invaders[j].Rectangle()
+			if CheckCollision(bx, by, bw, bh, ix, iy, iw, ih) {
+				// Remove invader.
+				g.Invaders = append(g.Invaders[:j], g.Invaders[j+1:]...)
+				// Deactivate bullet.
+				bullet.Active = false
+				// Increment score.
+				g.Score += killScore
+				// Each bullet kills at most one invader.
+				break
+			}
+		}
+	}
+}
+
 // Update proceeds the game state.
 // Update is called every tick (1/60 [s] by default).
 func (g *Game) Update() error {
@@ -133,6 +169,7 @@ func (g *Game) Update() error {
 
 	}
 	g.MovePlayerBullets()
+	g.HandleBulletInvaderCollisions()
 	g.MoveInvaders()
 	return nil
 }
@@ -153,18 +190,14 @@ func (_ *Game) Layout(_, _ int) (int, int) {
 }
 
 func main() {
-	// Initialize the font face for score text.
-	tt, err := opentype.Parse(goregular.TTF)
+	// Initialize the font face for score text using text/v2.
+	face, err := text.NewGoTextFaceSource(bytes.NewReader(goregular.TTF))
 	if err != nil {
 		log.Fatal(err)
 	}
-	scoreFontFace, err := opentype.NewFace(tt, &opentype.FaceOptions{
-		Size:    float64(scoreTextFontSize),
-		DPI:     dpi,
-		Hinting: font.HintingFull,
-	})
-	if err != nil {
-		log.Fatal(err)
+	scoreFontFace := &text.GoTextFace{
+		Source: face,
+		Size:   float64(scoreTextFontSize),
 	}
 
 	ebiten.SetWindowSize(int(screenWidth), int(screenHeight))

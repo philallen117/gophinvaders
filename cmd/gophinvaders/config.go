@@ -26,6 +26,7 @@ const (
 	bulletSpeed       float32 = 10 // -ve for upward movement for player bullets
 	bulletWidth       float32 = 4
 	bulletHeight      float32 = 10
+	killScore         int     = 10
 )
 
 var (

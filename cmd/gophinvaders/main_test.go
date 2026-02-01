@@ -135,3 +135,180 @@ func TestMoveInvaders(t *testing.T) {
 		}
 	})
 }
+
+func TestCheckCollision(t *testing.T) {
+	t.Run("overlapping rectangles collide", func(t *testing.T) {
+		invader := &Invader{LeftX: 100, TopY: 50}
+		bullet := &PlayerBullet{LeftX: 110, TopY: 60, Active: true}
+
+		ix, iy, iw, ih := invader.Rectangle()
+		bx, by, bw, bh := bullet.Rectangle()
+		if !CheckCollision(bx, by, bw, bh, ix, iy, iw, ih) {
+			t.Error("Expected collision between overlapping rectangles")
+		}
+	})
+
+	t.Run("separated rectangles do not collide", func(t *testing.T) {
+		invader := &Invader{LeftX: 100, TopY: 50}
+		bullet := &PlayerBullet{LeftX: 200, TopY: 200, Active: true}
+
+		ix, iy, iw, ih := invader.Rectangle()
+		bx, by, bw, bh := bullet.Rectangle()
+		if CheckCollision(bx, by, bw, bh, ix, iy, iw, ih) {
+			t.Error("Expected no collision between separated rectangles")
+		}
+	})
+
+	t.Run("adjacent rectangles do not collide", func(t *testing.T) {
+		invader := &Invader{LeftX: 100, TopY: 50}
+		// Bullet is exactly to the right of invader (touching but not overlapping).
+		bullet := &PlayerBullet{LeftX: 100 + invaderWidth, TopY: 50, Active: true}
+
+		ix, iy, iw, ih := invader.Rectangle()
+		bx, by, bw, bh := bullet.Rectangle()
+		if CheckCollision(bx, by, bw, bh, ix, iy, iw, ih) {
+			t.Error("Expected no collision between adjacent rectangles")
+		}
+	})
+
+	t.Run("bullet inside invader collides", func(t *testing.T) {
+		invader := &Invader{LeftX: 100, TopY: 50}
+		// Bullet completely inside invader bounds.
+		bullet := &PlayerBullet{LeftX: 110, TopY: 60, Active: true}
+
+		ix, iy, iw, ih := invader.Rectangle()
+		bx, by, bw, bh := bullet.Rectangle()
+		if !CheckCollision(bx, by, bw, bh, ix, iy, iw, ih) {
+			t.Error("Expected collision when bullet is inside invader")
+		}
+	})
+
+	t.Run("partial overlap collides", func(t *testing.T) {
+		invader := &Invader{LeftX: 100, TopY: 50}
+		// Invader: X: 100-140, Y: 50-80
+		// Bullet overlaps bottom-left corner of invader.
+		// Bullet: X: 98-102, Y: 75-85 (overlaps invader X: 100-102, Y: 75-80)
+		bullet := &PlayerBullet{LeftX: 98, TopY: 75, Active: true}
+
+		ix, iy, iw, ih := invader.Rectangle()
+		bx, by, bw, bh := bullet.Rectangle()
+		if !CheckCollision(bx, by, bw, bh, ix, iy, iw, ih) {
+			t.Error("Expected collision with partial overlap")
+		}
+	})
+}
+
+func TestBulletKillsOneInvader(t *testing.T) {
+	t.Run("bullet kills only first invader it hits", func(t *testing.T) {
+		game := &Game{
+			Score: 0,
+			Invaders: []Invader{
+				{LeftX: 100, TopY: 50},
+				{LeftX: 100, TopY: 90}, // Directly below first invader.
+			},
+		}
+		// Bullet positioned to hit first invader.
+		game.PlayerBullets[0] = PlayerBullet{LeftX: 110, TopY: 60, Active: true}
+
+		game.HandleBulletInvaderCollisions()
+
+		if len(game.Invaders) != 1 {
+			t.Errorf("Expected 1 invader remaining, got %d", len(game.Invaders))
+		}
+		if !game.PlayerBullets[0].Active {
+			// Bullet should be deactivated after hitting an invader.
+		} else {
+			t.Error("Expected bullet to be deactivated after collision")
+		}
+		if game.Score != killScore {
+			t.Errorf("Expected score to be %d, got %d", killScore, game.Score)
+		}
+	})
+
+	t.Run("bullet misses all invaders", func(t *testing.T) {
+		game := &Game{
+			Score: 0,
+			Invaders: []Invader{
+				{LeftX: 100, TopY: 50},
+			},
+		}
+		// Bullet far from invader.
+		game.PlayerBullets[0] = PlayerBullet{LeftX: 500, TopY: 500, Active: true}
+
+		game.HandleBulletInvaderCollisions()
+
+		if len(game.Invaders) != 1 {
+			t.Errorf("Expected 1 invader remaining, got %d", len(game.Invaders))
+		}
+		if !game.PlayerBullets[0].Active {
+			t.Error("Expected bullet to remain active when missing")
+		}
+		if game.Score != 0 {
+			t.Errorf("Expected score to remain 0, got %d", game.Score)
+		}
+	})
+}
+
+func TestMultipleBulletsKillMultipleInvaders(t *testing.T) {
+	t.Run("multiple bullets kill different invaders in same frame", func(t *testing.T) {
+		game := &Game{
+			Score: 0,
+			Invaders: []Invader{
+				{LeftX: 100, TopY: 50},
+				{LeftX: 200, TopY: 50},
+				{LeftX: 300, TopY: 50},
+			},
+		}
+		// Three bullets hitting three different invaders.
+		game.PlayerBullets[0] = PlayerBullet{LeftX: 110, TopY: 60, Active: true}
+		game.PlayerBullets[1] = PlayerBullet{LeftX: 210, TopY: 60, Active: true}
+		game.PlayerBullets[2] = PlayerBullet{LeftX: 310, TopY: 60, Active: true}
+
+		game.HandleBulletInvaderCollisions()
+
+		if len(game.Invaders) != 0 {
+			t.Errorf("Expected 0 invaders remaining, got %d", len(game.Invaders))
+		}
+		if game.PlayerBullets[0].Active || game.PlayerBullets[1].Active || game.PlayerBullets[2].Active {
+			t.Error("Expected all bullets to be deactivated after collisions")
+		}
+		expectedScore := 3 * killScore
+		if game.Score != expectedScore {
+			t.Errorf("Expected score to be %d, got %d", expectedScore, game.Score)
+		}
+	})
+
+	t.Run("two bullets hit one invader - only first bullet registers", func(t *testing.T) {
+		game := &Game{
+			Score: 0,
+			Invaders: []Invader{
+				{LeftX: 100, TopY: 50},
+			},
+		}
+		// Two bullets both positioned to hit the same invader.
+		game.PlayerBullets[0] = PlayerBullet{LeftX: 110, TopY: 60, Active: true}
+		game.PlayerBullets[1] = PlayerBullet{LeftX: 115, TopY: 65, Active: true}
+
+		game.HandleBulletInvaderCollisions()
+
+		// Only one invader, so only one bullet can kill it.
+		if len(game.Invaders) != 0 {
+			t.Errorf("Expected 0 invaders remaining, got %d", len(game.Invaders))
+		}
+		// Both bullets checked the invader, but only first one killed it.
+		// Second bullet would find no invaders left to collide with.
+		deactivatedCount := 0
+		if !game.PlayerBullets[0].Active {
+			deactivatedCount++
+		}
+		if !game.PlayerBullets[1].Active {
+			deactivatedCount++
+		}
+		if deactivatedCount != 1 {
+			t.Errorf("Expected exactly 1 bullet deactivated, got %d", deactivatedCount)
+		}
+		if game.Score != killScore {
+			t.Errorf("Expected score to be %d, got %d", killScore, game.Score)
+		}
+	})
+}
