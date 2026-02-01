@@ -10,10 +10,12 @@ import (
 
 // Game implements ebiten.Game interface.
 type Game struct {
-	Player         Player
-	PlayerBullets  [numPlayerBullets]PlayerBullet
-	InvaderBullets [numInvaderBullets]InvaderBullet
-	Invaders       []Invader
+	Player              Player
+	PlayerBullets       [numPlayerBullets]PlayerBullet
+	InvaderBullets      [numInvaderBullets]InvaderBullet
+	Invaders            []Invader
+	InvaderDirection    float32 // Positive = right, negative = left
+	InvaderMoveCounter  int     // Counts frames until next movement
 }
 
 func (g *Game) DrawPlayerBullets(screen *ebiten.Image) {
@@ -64,6 +66,37 @@ func (g *Game) MoveInvaderBullets() {
 	}
 }
 
+func (g *Game) MoveInvaders() {
+	g.InvaderMoveCounter++
+	if g.InvaderMoveCounter < invaderMoveDelay {
+		return
+	}
+	g.InvaderMoveCounter = 0
+
+	// Check if any invader will hit the edge after moving.
+	var shouldDrop bool
+	for i := range g.Invaders {
+		newX := g.Invaders[i].LeftX + g.InvaderDirection*invaderSpeedX
+		if newX < 0 || newX+invaderWidth > screenWidth {
+			shouldDrop = true
+			break
+		}
+	}
+
+	if shouldDrop {
+		// Drop all invaders and reverse direction.
+		for i := range g.Invaders {
+			g.Invaders[i].TopY += invaderDropDistance
+		}
+		g.InvaderDirection = -g.InvaderDirection
+	} else {
+		// Move all invaders horizontally.
+		for i := range g.Invaders {
+			g.Invaders[i].LeftX += g.InvaderDirection * invaderSpeedX
+		}
+	}
+}
+
 // Update proceeds the game state.
 // Update is called every tick (1/60 [s] by default).
 func (g *Game) Update() error {
@@ -86,6 +119,7 @@ func (g *Game) Update() error {
 
 	}
 	g.MovePlayerBullets()
+	g.MoveInvaders()
 	return nil
 }
 
@@ -108,7 +142,8 @@ func main() {
 	ebiten.SetWindowTitle("Hello ebiten")
 
 	game := &Game{
-		Player: NewPlayer(),
+		Player:           NewPlayer(),
+		InvaderDirection: 1.0, // Start moving right
 	}
 
 	// Initialize invader grid.

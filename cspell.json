@@ -6,6 +6,7 @@
         "ebiten",
         "ebitengine",
         "ebitenutil",
+        "enbiten",
         "golangci",
         "gomobile",
         "gophinvaders",
