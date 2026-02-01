@@ -10,12 +10,12 @@ import (
 
 // Game implements ebiten.Game interface.
 type Game struct {
-	Player              Player
-	PlayerBullets       [numPlayerBullets]PlayerBullet
-	InvaderBullets      [numInvaderBullets]InvaderBullet
-	Invaders            []Invader
-	InvaderDirection    float32 // Positive = right, negative = left
-	InvaderMoveCounter  int     // Counts frames until next movement
+	Player             Player
+	PlayerBullets      [numPlayerBullets]PlayerBullet
+	InvaderBullets     [numInvaderBullets]InvaderBullet
+	Invaders           []Invader
+	InvaderDirection   float32 // Positive = right, negative = left
+	InvaderMoveCounter int     // Counts frames until next movement
 }
 
 func (g *Game) DrawPlayerBullets(screen *ebiten.Image) {
@@ -134,11 +134,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 // Layout takes the outside size (e.g., the window size) and returns the (logical) screen size.
 // If you don't have to adjust the screen size with the outside size, just return a fixed size.
 func (_ *Game) Layout(_, _ int) (int, int) {
-	return screenWidth, screenHeight
+	return int(screenWidth), int(screenHeight)
 }
 
 func main() {
-	ebiten.SetWindowSize(screenWidth, screenHeight)
+	ebiten.SetWindowSize(int(screenWidth), int(screenHeight))
 	ebiten.SetWindowTitle("Hello ebiten")
 
 	game := &Game{
@@ -150,8 +150,8 @@ func main() {
 	game.Invaders = make([]Invader, 0, invaderRows*invaderCols)
 	for row := 0; row < invaderRows; row++ {
 		for col := 0; col < invaderCols; col++ {
-			x := float32(invaderStartX + col*invaderSpacingX)
-			y := float32(invaderStartY + row*invaderSpacingY)
+			x := invaderStartX + float32(col)*invaderSpacingX
+			y := invaderStartY + float32(row)*invaderSpacingY
 			game.Invaders = append(game.Invaders, NewInvader(x, y))
 		}
 	}
