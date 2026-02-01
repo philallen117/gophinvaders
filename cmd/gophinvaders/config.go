@@ -55,12 +55,13 @@ var invaderColor = colornames.Red
 
 // Text/Font configuration.
 const (
-	pointsPerInch             = 72
-	dpi                       = 72
-	pointPerPixel     float32 = pointsPerInch / dpi
-	scoreTextFontSize         = int(25 * pointPerPixel) // points
-	scoreTextX        float32 = 20
-	scoreTextY        float32 = 10
+	pointsPerInch                = 72
+	dpi                          = 72
+	pointPerPixel        float32 = pointsPerInch / dpi
+	scoreTextFontSize            = int(25 * pointPerPixel) // points
+	scoreTextX           float32 = 20
+	scoreTextY           float32 = 10
+	gameOverTextFontSize         = int(40 * pointPerPixel)
 )
 
 var textColor = colornames.White

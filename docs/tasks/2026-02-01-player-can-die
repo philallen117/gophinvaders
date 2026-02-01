@@ -1,0 +1,22 @@
+Now add collision logic player with invader bullet.
+
+First, add an instance variable called game_lost to game, initially false.
+
+If an invader bullet collides with the Player object, the game is lost. I prefer the update of dead invaders and player score to be done before the update of game_lost. Update the game logic and tests accordingly. We will deal with displaying the final outcome later.
+
+---
+
+As soon as the game is lost, we need to display a different scene with text that reads (taking an example score of 170).
+
+Game over
+Score: 170
+
+The text lines should be centred and their font size should be.
+
+Just to clarify, once game is lost, game objects should no longer be moved or updated.
+
+Plan the changes and tests for them.
+
+---
+
+I notice the window title of the game still reads "hello ebiten". Change that to "gophinvaders".

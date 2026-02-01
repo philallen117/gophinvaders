@@ -11,11 +11,12 @@ import (
 )
 
 // NewGame creates and initializes a new Game instance.
-func NewGame(scoreFontFace *text.GoTextFace) *Game {
+func NewGame(scoreFontFace, gameOverFontFace *text.GoTextFace) *Game {
 	game := &Game{
 		Player:           NewPlayer(),
 		InvaderDirection: 1.0, // Start moving right
 		ScoreFontFace:    scoreFontFace,
+		GameOverFontFace: gameOverFontFace,
 	}
 
 	// Initialize invader grid.
@@ -41,7 +42,9 @@ type Game struct {
 	InvaderMoveCounter  int     // Counts frames until next movement
 	InvaderShootCounter int     // Counts frames until next shooting check
 	Score               int
+	GameLost            bool
 	ScoreFontFace       *text.GoTextFace
+	GameOverFontFace    *text.GoTextFace
 }
 
 func (g *Game) DrawPlayerBullets(screen *ebiten.Image) {
@@ -183,9 +186,37 @@ func (g *Game) HandleInvaderShooting() {
 	}
 }
 
+func (g *Game) HandleInvaderBulletPlayerCollisions() {
+	// Get player rectangle once.
+	px, py, pw, ph := g.Player.Rectangle()
+
+	// Check collision with each invader bullet.
+	for i := range g.InvaderBullets {
+		bullet := &g.InvaderBullets[i]
+		if !bullet.Active {
+			continue
+		}
+
+		// Get bullet rectangle.
+		bx, by, bw, bh := bullet.Rectangle()
+		if CheckCollision(bx, by, bw, bh, px, py, pw, ph) {
+			// Deactivate bullet.
+			bullet.Active = false
+			// Game is lost.
+			g.GameLost = true
+			// No need to check other bullets once game is lost.
+			return
+		}
+	}
+}
+
 // Update proceeds the game state.
 // Update is called every tick (1/60 [s] by default).
 func (g *Game) Update() error {
+	if g.GameLost {
+		return nil
+	}
+
 	// Handle left/right arrow keys.
 	var left = ebiten.IsKeyPressed(ebiten.KeyLeft) || ebiten.IsKeyPressed(ebiten.KeyArrowLeft)
 	var right = ebiten.IsKeyPressed(ebiten.KeyRight) || ebiten.IsKeyPressed(ebiten.KeyArrowRight)
@@ -207,6 +238,7 @@ func (g *Game) Update() error {
 	g.MovePlayerBullets()
 	g.MoveInvaderBullets()
 	g.HandleBulletInvaderCollisions()
+	g.HandleInvaderBulletPlayerCollisions()
 	g.HandleInvaderShooting()
 	g.MoveInvaders()
 	return nil
@@ -215,11 +247,35 @@ func (g *Game) Update() error {
 // Draw draws the game screen.
 // Draw is called every frame (typically 1/60[s] for 60Hz display).
 func (g *Game) Draw(screen *ebiten.Image) {
+	if g.GameLost {
+		g.DrawGameOver(screen)
+		return
+	}
+
 	g.DrawInvaders(screen)
 	g.Player.Draw(screen)
 	g.DrawPlayerBullets(screen)
 	g.DrawInvaderBullets(screen)
 	g.DrawScore(screen)
+}
+
+func (g *Game) DrawGameOver(screen *ebiten.Image) {
+	// Draw "Game Over" text centered.
+	gameOverText := "Game Over"
+	op := &text.DrawOptions{}
+	// Measure the text to center it.
+	width, _ := text.Measure(gameOverText, g.GameOverFontFace, 0)
+	op.GeoM.Translate(float64(screenWidth/2-float32(width)/2), float64(screenHeight/2-50))
+	op.ColorScale.ScaleWithColor(textColor)
+	text.Draw(screen, gameOverText, g.GameOverFontFace, op)
+
+	// Draw score text centered below.
+	scoreText := fmt.Sprintf("Score: %d", g.Score)
+	op = &text.DrawOptions{}
+	width, _ = text.Measure(scoreText, g.GameOverFontFace, 0)
+	op.GeoM.Translate(float64(screenWidth/2-float32(width)/2), float64(screenHeight/2+10))
+	op.ColorScale.ScaleWithColor(textColor)
+	text.Draw(screen, scoreText, g.GameOverFontFace, op)
 }
 
 // Layout takes the outside size (e.g., the window size) and returns the (logical) screen size.
