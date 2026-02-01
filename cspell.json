@@ -1,0 +1,17 @@
+{
+    "version": "0.2",
+    "allowCompoundWords": true,
+    "words": [
+        "Cypert's",
+        "ebiten",
+        "ebitengine",
+        "ebitenutil",
+        "golangci",
+        "gomobile",
+        "gophinvaders",
+        "gosec",
+        "hajimehoshi",
+        "jezek",
+        "purego"
+    ]
+}
