@@ -12,6 +12,9 @@
         "gosec",
         "hajimehoshi",
         "jezek",
-        "purego"
+        "ldflags",
+        "purego",
+        "securego",
+        "sfkleach"
     ]
 }
