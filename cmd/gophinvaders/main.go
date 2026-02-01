@@ -7,25 +7,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
-	"golang.org/x/image/colornames"
-)
-
-const (
-	screenWidth       = 800
-	screenHeight      = 600
-	playerWidth       = 50
-	playerHeight      = 30
-	playerSpeed       = 5
-	numPlayerBullets  = 10
-	numInvaderBullets = 20
-	bulletSpeed       = 10 // -ve for upward movement for player bullets
-	bulletWidth       = 4
-	bulletHeight      = 10
-)
-
-var (
-	playerBulletColor  = colornames.White
-	invaderBulletColor = colornames.Red
 )
 
 // Game implements ebiten.Game interface.

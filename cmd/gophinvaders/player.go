@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
-	"golang.org/x/image/colornames"
 )
 
 type Player struct {
@@ -46,5 +45,3 @@ func (p *Player) Rectangle() (leftX, topY, width, depth float32) {
 func (p *Player) TopMid() (float32, float32) {
 	return p.LeftX + playerWidth/2, p.TopY
 }
-
-var playerColor = colornames.Blue
