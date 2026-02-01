@@ -1,11 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/text"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"golang.org/x/image/font"
+	"golang.org/x/image/font/gofont/goregular"
+	"golang.org/x/image/font/opentype"
 )
 
 // Game implements ebiten.Game interface.
@@ -16,6 +21,8 @@ type Game struct {
 	Invaders           []Invader
 	InvaderDirection   float32 // Positive = right, negative = left
 	InvaderMoveCounter int     // Counts frames until next movement
+	Score              int
+	ScoreFontFace      font.Face
 }
 
 func (g *Game) DrawPlayerBullets(screen *ebiten.Image) {
@@ -40,6 +47,13 @@ func (g *Game) DrawInvaders(screen *ebiten.Image) {
 	for i := range g.Invaders {
 		g.Invaders[i].Draw(screen)
 	}
+}
+
+func (g *Game) DrawScore(screen *ebiten.Image) {
+	scoreText := fmt.Sprintf("Score: %d", g.Score)
+	// text.Draw uses baseline positioning, so we need to adjust Y coordinate.
+	// The baseline is roughly at scoreTextY + font height.
+	text.Draw(screen, scoreText, g.ScoreFontFace, int(scoreTextX), int(scoreTextY)+scoreTextFontSize, textColor)
 }
 
 func (g *Game) MovePlayerBullets() {
@@ -129,6 +143,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.DrawInvaders(screen)
 	g.Player.Draw(screen)
 	g.DrawPlayerBullets(screen)
+	g.DrawScore(screen)
 }
 
 // Layout takes the outside size (e.g., the window size) and returns the (logical) screen size.
@@ -138,12 +153,27 @@ func (_ *Game) Layout(_, _ int) (int, int) {
 }
 
 func main() {
+	// Initialize the font face for score text.
+	tt, err := opentype.Parse(goregular.TTF)
+	if err != nil {
+		log.Fatal(err)
+	}
+	scoreFontFace, err := opentype.NewFace(tt, &opentype.FaceOptions{
+		Size:    float64(scoreTextFontSize),
+		DPI:     dpi,
+		Hinting: font.HintingFull,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	ebiten.SetWindowSize(int(screenWidth), int(screenHeight))
 	ebiten.SetWindowTitle("Hello ebiten")
 
 	game := &Game{
 		Player:           NewPlayer(),
 		InvaderDirection: 1.0, // Start moving right
+		ScoreFontFace:    scoreFontFace,
 	}
 
 	// Initialize invader grid.
