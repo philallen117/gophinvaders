@@ -4,7 +4,6 @@ import (
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
@@ -14,6 +13,7 @@ type Game struct {
 	Player         Player
 	PlayerBullets  [numPlayerBullets]PlayerBullet
 	InvaderBullets [numInvaderBullets]InvaderBullet
+	Invaders       []Invader
 }
 
 func (g *Game) DrawPlayerBullets(screen *ebiten.Image) {
@@ -31,6 +31,12 @@ func (g *Game) DrawInvaderBullets(screen *ebiten.Image) {
 		if bullet.Active {
 			vector.FillRect(screen, bullet.LeftX, bullet.TopY, bulletWidth, bulletHeight, invaderBulletColor, false)
 		}
+	}
+}
+
+func (g *Game) DrawInvaders(screen *ebiten.Image) {
+	for i := range g.Invaders {
+		g.Invaders[i].Draw(screen)
 	}
 }
 
@@ -86,9 +92,7 @@ func (g *Game) Update() error {
 // Draw draws the game screen.
 // Draw is called every frame (typically 1/60[s] for 60Hz display).
 func (g *Game) Draw(screen *ebiten.Image) {
-	// Draw static text.
-	ebitenutil.DebugPrint(screen, "hello ebiten")
-
+	g.DrawInvaders(screen)
 	g.Player.Draw(screen)
 	g.DrawPlayerBullets(screen)
 }
@@ -105,6 +109,16 @@ func main() {
 
 	game := &Game{
 		Player: NewPlayer(),
+	}
+
+	// Initialize invader grid.
+	game.Invaders = make([]Invader, 0, invaderRows*invaderCols)
+	for row := 0; row < invaderRows; row++ {
+		for col := 0; col < invaderCols; col++ {
+			x := float32(invaderStartX + col*invaderSpacingX)
+			y := float32(invaderStartY + row*invaderSpacingY)
+			game.Invaders = append(game.Invaders, NewInvader(x, y))
+		}
 	}
 
 	if err := ebiten.RunGame(game); err != nil {

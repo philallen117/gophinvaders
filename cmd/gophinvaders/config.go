@@ -32,3 +32,22 @@ var (
 	playerBulletColor  = colornames.White
 	invaderBulletColor = colornames.Red
 )
+
+// Invader configuration.
+const (
+	invaderWidth        = 40
+	invaderHeight       = 30
+	invaderSpeedX       = 5
+	invaderRows         = 5
+	invaderCols         = 11
+	invaderStartX       = 100
+	invaderStartY       = 50
+	invaderSpacingX     = 60
+	invaderSpacingY     = 40
+	invaderMoveDelay    = 30 // frames
+	invaderDropDistance = 20
+	invaderShootDelay   = 60 // frames
+	invaderShootChance  = 5  // percent chance per delay interval per live invader
+)
+
+var invaderColor = colornames.Red
