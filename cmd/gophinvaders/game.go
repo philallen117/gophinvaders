@@ -13,30 +13,52 @@ import (
 // NewGame creates and initializes a new Game instance.
 func NewGame(scoreFontFace, gameOverFontFace *text.GoTextFace) *Game {
 	game := &Game{
-		Player:           NewPlayer(),
-		InvaderDirection: 1.0, // Start moving right
 		ScoreFontFace:    scoreFontFace,
 		GameOverFontFace: gameOverFontFace,
 	}
+	game.Initialize()
+	return game
+}
+
+// Initialize resets all game state to starting conditions.
+func (g *Game) Initialize() {
+	// Reset player.
+	g.Player = NewPlayer()
+
+	// Clear all bullet pools.
+	for i := range g.PlayerBullets {
+		g.PlayerBullets[i].Active = false
+	}
+	for i := range g.InvaderBullets {
+		g.InvaderBullets[i].Active = false
+	}
+
+	// Reset invader state.
+	g.InvaderDirection = 1.0 // Start moving right
+	g.InvaderMoveCounter = 0
+	g.InvaderShootCounter = 0
 
 	// Initialize invader grid.
-	game.Invaders = make([]Invader, 0, invaderRows*invaderCols)
+	g.Invaders = make([]Invader, 0, invaderRows*invaderCols)
 	for row := 0; row < invaderRows; row++ {
 		for col := 0; col < invaderCols; col++ {
 			x := invaderStartX + float32(col)*invaderSpacingX
 			y := invaderStartY + float32(row)*invaderSpacingY
-			game.Invaders = append(game.Invaders, NewInvader(x, y))
+			g.Invaders = append(g.Invaders, NewInvader(x, y))
 		}
 	}
 
 	// Initialize shields.
-	game.Shields = make([]Shield, 0, shieldStartCount)
+	g.Shields = make([]Shield, 0, shieldStartCount)
 	for i := 0; i < shieldStartCount; i++ {
 		x := shieldStartX + float32(i)*shieldSpacingX
-		game.Shields = append(game.Shields, NewShield(x, shieldStartY))
+		g.Shields = append(g.Shields, NewShield(x, shieldStartY))
 	}
 
-	return game
+	// Reset score and game state flags.
+	g.Score = 0
+	g.GameLost = false
+	g.PlayerWon = false
 }
 
 // Game implements ebiten.Game interface.
@@ -294,7 +316,11 @@ func (g *Game) HandleInvaderBulletShieldCollisions() {
 // Update proceeds the game state.
 // Update is called every tick (1/60 [s] by default).
 func (g *Game) Update() error {
+	// Check for restart when game is over.
 	if g.GameLost || g.PlayerWon {
+		if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+			g.Initialize()
+		}
 		return nil
 	}
 
@@ -353,7 +379,7 @@ func (g *Game) DrawGameOver(screen *ebiten.Image, message string) {
 	op := &text.DrawOptions{}
 	// Measure the text to center it.
 	width, _ := text.Measure(message, g.GameOverFontFace, 0)
-	op.GeoM.Translate(float64(screenWidth/2-float32(width)/2), float64(screenHeight/2-50))
+	op.GeoM.Translate(float64(screenWidth/2-float32(width)/2), float64(screenHeight/2-70))
 	op.ColorScale.ScaleWithColor(textColor)
 	text.Draw(screen, message, g.GameOverFontFace, op)
 
@@ -361,9 +387,17 @@ func (g *Game) DrawGameOver(screen *ebiten.Image, message string) {
 	scoreText := fmt.Sprintf("Score: %d", g.Score)
 	op = &text.DrawOptions{}
 	width, _ = text.Measure(scoreText, g.GameOverFontFace, 0)
-	op.GeoM.Translate(float64(screenWidth/2-float32(width)/2), float64(screenHeight/2+10))
+	op.GeoM.Translate(float64(screenWidth/2-float32(width)/2), float64(screenHeight/2-10))
 	op.ColorScale.ScaleWithColor(textColor)
 	text.Draw(screen, scoreText, g.GameOverFontFace, op)
+
+	// Draw restart instruction centered below.
+	restartText := "Press ENTER to restart"
+	op = &text.DrawOptions{}
+	width, _ = text.Measure(restartText, g.GameOverFontFace, 0)
+	op.GeoM.Translate(float64(screenWidth/2-float32(width)/2), float64(screenHeight/2+50))
+	op.ColorScale.ScaleWithColor(textColor)
+	text.Draw(screen, restartText, g.GameOverFontFace, op)
 }
 
 // Layout takes the outside size (e.g., the window size) and returns the (logical) screen size.
