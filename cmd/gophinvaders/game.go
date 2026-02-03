@@ -29,6 +29,13 @@ func NewGame(scoreFontFace, gameOverFontFace *text.GoTextFace) *Game {
 		}
 	}
 
+	// Initialize shields.
+	game.Shields = make([]Shield, 0, shieldStartCount)
+	for i := 0; i < shieldStartCount; i++ {
+		x := shieldStartX + float32(i)*shieldSpacingX
+		game.Shields = append(game.Shields, NewShield(x, shieldStartY))
+	}
+
 	return game
 }
 
@@ -38,6 +45,7 @@ type Game struct {
 	PlayerBullets       [numPlayerBullets]PlayerBullet
 	InvaderBullets      [numInvaderBullets]InvaderBullet
 	Invaders            []Invader
+	Shields             []Shield
 	InvaderDirection    float32 // Positive = right, negative = left
 	InvaderMoveCounter  int     // Counts frames until next movement
 	InvaderShootCounter int     // Counts frames until next shooting check
@@ -66,6 +74,12 @@ func (g *Game) DrawInvaderBullets(screen *ebiten.Image) {
 func (g *Game) DrawInvaders(screen *ebiten.Image) {
 	for i := range g.Invaders {
 		g.Invaders[i].Draw(screen)
+	}
+}
+
+func (g *Game) DrawShields(screen *ebiten.Image) {
+	for i := range g.Shields {
+		g.Shields[i].Draw(screen)
 	}
 }
 
@@ -215,6 +229,68 @@ func (g *Game) HandleInvaderBulletPlayerCollisions() {
 	}
 }
 
+func (g *Game) HandlePlayerBulletShieldCollisions() {
+	for i := range g.PlayerBullets {
+		bullet := &g.PlayerBullets[i]
+		if !bullet.Active {
+			continue
+		}
+
+		// Get bullet rectangle once for this bullet.
+		bx, by, bw, bh := bullet.Rectangle()
+
+		// Check collision with each shield.
+		// Loop backwards to safely remove shields during iteration.
+		for j := len(g.Shields) - 1; j >= 0; j-- {
+			shield := &g.Shields[j]
+			sx, sy, sw, sh := shield.Rectangle()
+			if CheckCollision(bx, by, bw, bh, sx, sy, sw, sh) {
+				// Deactivate bullet.
+				bullet.Active = false
+				// Reduce shield health.
+				shield.Health--
+				// Remove shield if health reaches zero.
+				if shield.Health <= 0 {
+					g.Shields = append(g.Shields[:j], g.Shields[j+1:]...)
+				}
+				// Each bullet hits at most one shield.
+				break
+			}
+		}
+	}
+}
+
+func (g *Game) HandleInvaderBulletShieldCollisions() {
+	for i := range g.InvaderBullets {
+		bullet := &g.InvaderBullets[i]
+		if !bullet.Active {
+			continue
+		}
+
+		// Get bullet rectangle once for this bullet.
+		bx, by, bw, bh := bullet.Rectangle()
+
+		// Check collision with each shield.
+		// Loop backwards to safely remove shields during iteration.
+		for j := len(g.Shields) - 1; j >= 0; j-- {
+			shield := &g.Shields[j]
+			sx, sy, sw, sh := shield.Rectangle()
+			if CheckCollision(bx, by, bw, bh, sx, sy, sw, sh) {
+				// Deactivate bullet.
+				bullet.Active = false
+				// Reduce shield health.
+				shield.Health--
+				// Remove shield if health reaches zero.
+				if shield.Health <= 0 {
+					g.Shields = append(g.Shields[:j], g.Shields[j+1:]...)
+				}
+				// Each bullet hits at most one shield.
+				break
+			}
+		}
+	}
+}
+
 // Update proceeds the game state.
 // Update is called every tick (1/60 [s] by default).
 func (g *Game) Update() error {
@@ -241,9 +317,11 @@ func (g *Game) Update() error {
 
 	}
 	g.MovePlayerBullets()
+	g.HandlePlayerBulletShieldCollisions()
 	g.MoveInvaderBullets()
 	g.HandleBulletInvaderCollisions()
 	g.HandleInvaderBulletPlayerCollisions()
+	g.HandleInvaderBulletShieldCollisions()
 	g.HandleInvaderShooting()
 	g.MoveInvaders()
 	return nil
@@ -263,6 +341,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	g.DrawInvaders(screen)
+	g.DrawShields(screen)
 	g.Player.Draw(screen)
 	g.DrawPlayerBullets(screen)
 	g.DrawInvaderBullets(screen)

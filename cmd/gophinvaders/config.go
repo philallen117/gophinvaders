@@ -65,3 +65,17 @@ const (
 )
 
 var textColor = colornames.White
+
+// Shield configuration.
+const (
+	shieldWidth          float32 = 80
+	shieldHeight         float32 = 60
+	shieldStartCount             = 4
+	shieldStartX         float32 = 150
+	shieldSpacingX       float32 = 150
+	shieldStartY         float32 = 450
+	shieldInitialHealth          = 10 // Number of hits shield can take before being destroyed
+	shieldAlphaReduction         = 20 // Alpha reduction per hit (makes shields more visible)
+)
+
+var shieldColor = colornames.Cyan

@@ -327,6 +327,27 @@ func TestNewGameInvaderBulletPool(t *testing.T) {
 	}
 }
 
+func TestNewGameShieldsInitialized(t *testing.T) {
+	game := NewGame(nil, nil)
+
+	if len(game.Shields) != shieldStartCount {
+		t.Errorf("Shields length = %v, want %v", len(game.Shields), shieldStartCount)
+	}
+
+	for i, shield := range game.Shields {
+		expectedX := shieldStartX + float32(i)*shieldSpacingX
+		if shield.LeftX != expectedX {
+			t.Errorf("Shield[%d].LeftX = %v, want %v", i, shield.LeftX, expectedX)
+		}
+		if shield.TopY != shieldStartY {
+			t.Errorf("Shield[%d].TopY = %v, want %v", i, shield.TopY, shieldStartY)
+		}
+		if shield.Health != shieldInitialHealth {
+			t.Errorf("Shield[%d].Health = %v, want %v", i, shield.Health, shieldInitialHealth)
+		}
+	}
+}
+
 func TestHandleInvaderShootingCounter(t *testing.T) {
 	t.Run("counter increments each frame", func(t *testing.T) {
 		game := &Game{
