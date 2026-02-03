@@ -43,6 +43,7 @@ type Game struct {
 	InvaderShootCounter int     // Counts frames until next shooting check
 	Score               int
 	GameLost            bool
+	PlayerWon           bool
 	ScoreFontFace       *text.GoTextFace
 	GameOverFontFace    *text.GoTextFace
 }
@@ -154,6 +155,10 @@ func (g *Game) HandleBulletInvaderCollisions() {
 				bullet.Active = false
 				// Increment score.
 				g.Score += killScore
+				// Check if all invaders are destroyed.
+				if len(g.Invaders) == 0 {
+					g.PlayerWon = true
+				}
 				// Each bullet kills at most one invader.
 				break
 			}
@@ -213,7 +218,7 @@ func (g *Game) HandleInvaderBulletPlayerCollisions() {
 // Update proceeds the game state.
 // Update is called every tick (1/60 [s] by default).
 func (g *Game) Update() error {
-	if g.GameLost {
+	if g.GameLost || g.PlayerWon {
 		return nil
 	}
 
@@ -248,7 +253,12 @@ func (g *Game) Update() error {
 // Draw is called every frame (typically 1/60[s] for 60Hz display).
 func (g *Game) Draw(screen *ebiten.Image) {
 	if g.GameLost {
-		g.DrawGameOver(screen)
+		g.DrawGameOver(screen, "Game Over")
+		return
+	}
+
+	if g.PlayerWon {
+		g.DrawGameOver(screen, "You won!")
 		return
 	}
 
@@ -259,15 +269,14 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.DrawScore(screen)
 }
 
-func (g *Game) DrawGameOver(screen *ebiten.Image) {
-	// Draw "Game Over" text centered.
-	gameOverText := "Game Over"
+func (g *Game) DrawGameOver(screen *ebiten.Image, message string) {
+	// Draw message text centered.
 	op := &text.DrawOptions{}
 	// Measure the text to center it.
-	width, _ := text.Measure(gameOverText, g.GameOverFontFace, 0)
+	width, _ := text.Measure(message, g.GameOverFontFace, 0)
 	op.GeoM.Translate(float64(screenWidth/2-float32(width)/2), float64(screenHeight/2-50))
 	op.ColorScale.ScaleWithColor(textColor)
-	text.Draw(screen, gameOverText, g.GameOverFontFace, op)
+	text.Draw(screen, message, g.GameOverFontFace, op)
 
 	// Draw score text centered below.
 	scoreText := fmt.Sprintf("Score: %d", g.Score)

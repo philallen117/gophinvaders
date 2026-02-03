@@ -705,3 +705,173 @@ func TestDrawGameOverDoesNotPanic(t *testing.T) {
 		// The actual rendering is verified manually.
 	})
 }
+
+func TestPlayerWonInitiallyFalse(t *testing.T) {
+	game := NewGame(nil, nil)
+
+	if game.PlayerWon {
+		t.Error("Expected PlayerWon to be false initially")
+	}
+}
+
+func TestPlayerWonWhenAllInvadersKilled(t *testing.T) {
+	t.Run("player wins when last invader is killed", func(t *testing.T) {
+		game := &Game{
+			Score:     0,
+			PlayerWon: false,
+			Invaders:  []Invader{{LeftX: 100, TopY: 50}},
+		}
+		// Position bullet to hit the only invader.
+		game.PlayerBullets[0] = PlayerBullet{LeftX: 110, TopY: 60, Active: true}
+
+		game.HandleBulletInvaderCollisions()
+
+		if !game.PlayerWon {
+			t.Error("Expected PlayerWon to be true when all invaders killed")
+		}
+		if len(game.Invaders) != 0 {
+			t.Errorf("Expected 0 invaders, got %d", len(game.Invaders))
+		}
+		if game.Score != killScore {
+			t.Errorf("Expected score to be %d, got %d", killScore, game.Score)
+		}
+		if game.PlayerBullets[0].Active {
+			t.Error("Expected bullet to be deactivated")
+		}
+	})
+
+	t.Run("score updated before player won is set", func(t *testing.T) {
+		game := &Game{
+			Score:     90,
+			PlayerWon: false,
+			Invaders:  []Invader{{LeftX: 100, TopY: 50}},
+		}
+		game.PlayerBullets[0] = PlayerBullet{LeftX: 110, TopY: 60, Active: true}
+
+		game.HandleBulletInvaderCollisions()
+
+		if !game.PlayerWon {
+			t.Error("Expected PlayerWon to be true")
+		}
+		expectedScore := 90 + killScore
+		if game.Score != expectedScore {
+			t.Errorf("Expected score to be %d, got %d", expectedScore, game.Score)
+		}
+	})
+}
+
+func TestPlayerWonNotSetWhenInvadersRemain(t *testing.T) {
+	t.Run("player does not win when invaders remain", func(t *testing.T) {
+		game := &Game{
+			Score:     0,
+			PlayerWon: false,
+			Invaders: []Invader{
+				{LeftX: 100, TopY: 50},
+				{LeftX: 200, TopY: 50},
+			},
+		}
+		// Kill only the first invader.
+		game.PlayerBullets[0] = PlayerBullet{LeftX: 110, TopY: 60, Active: true}
+
+		game.HandleBulletInvaderCollisions()
+
+		if game.PlayerWon {
+			t.Error("Expected PlayerWon to remain false when invaders remain")
+		}
+		if len(game.Invaders) != 1 {
+			t.Errorf("Expected 1 invader remaining, got %d", len(game.Invaders))
+		}
+	})
+}
+
+func TestUpdateStopsWhenPlayerWon(t *testing.T) {
+	t.Run("Update returns immediately when player has won", func(t *testing.T) {
+		game := NewGame(nil, nil)
+		game.PlayerWon = true
+		initialPlayer := game.Player
+
+		if err := game.Update(); err != nil {
+			t.Fatalf("Update() returned error: %v", err)
+		}
+
+		// Player should not have moved.
+		if game.Player != initialPlayer {
+			t.Error("Expected player to remain unchanged when player has won")
+		}
+	})
+
+	t.Run("game objects do not move when player has won", func(t *testing.T) {
+		game := NewGame(nil, nil)
+		game.PlayerWon = true
+		game.Player = Player{LeftX: 100, TopY: 500}
+		game.PlayerBullets[0] = PlayerBullet{LeftX: 200, TopY: 300, Active: true}
+		game.InvaderBullets[0] = InvaderBullet{LeftX: 250, TopY: 350, Active: true}
+		game.Invaders = []Invader{{LeftX: 150, TopY: 75}}
+
+		initialPlayerPos := game.Player
+		initialPlayerBullet := game.PlayerBullets[0]
+		initialInvaderBullet := game.InvaderBullets[0]
+		initialInvader := game.Invaders[0]
+
+		if err := game.Update(); err != nil {
+			t.Fatalf("Update() returned error: %v", err)
+		}
+
+		// Nothing should have changed.
+		if game.Player != initialPlayerPos {
+			t.Error("Expected player position unchanged")
+		}
+		if game.PlayerBullets[0] != initialPlayerBullet {
+			t.Error("Expected player bullet unchanged")
+		}
+		if game.InvaderBullets[0] != initialInvaderBullet {
+			t.Error("Expected invader bullet unchanged")
+		}
+		if game.Invaders[0] != initialInvader {
+			t.Error("Expected invader unchanged")
+		}
+	})
+}
+
+func TestGameObjectsFrozenWhenPlayerWon(t *testing.T) {
+	t.Run("game state does not change after win", func(t *testing.T) {
+		game := NewGame(nil, nil)
+		game.Invaders = []Invader{{LeftX: 100, TopY: 50}}
+		game.PlayerBullets[0] = PlayerBullet{LeftX: 110, TopY: 60, Active: true}
+
+		// First update - last invader is killed.
+		if err := game.Update(); err != nil {
+			t.Fatalf("Update() returned error: %v", err)
+		}
+
+		if !game.PlayerWon {
+			t.Fatal("Expected player to have won after killing last invader")
+		}
+
+		// Capture state after win.
+		scoreAfterWin := game.Score
+		playerPosAfterWin := game.Player
+
+		// Add a bullet that would normally move.
+		game.PlayerBullets[1] = PlayerBullet{LeftX: 300, TopY: 400, Active: true}
+		bulletPosAfterWin := game.PlayerBullets[1]
+
+		// Run multiple more updates.
+		for i := 0; i < 10; i++ {
+			if err := game.Update(); err != nil {
+				t.Fatalf("Update() returned error: %v", err)
+			}
+		}
+
+		// State should be unchanged.
+		if game.Player != playerPosAfterWin {
+			t.Error("Expected player state to remain frozen after player won")
+		}
+		if game.Score != scoreAfterWin {
+			t.Error("Expected score to remain frozen after player won")
+		}
+		if game.PlayerBullets[1] != bulletPosAfterWin {
+			t.Error("Expected bullet to remain frozen after player won")
+		}
+	})
+}
