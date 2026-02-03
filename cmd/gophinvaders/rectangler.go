@@ -1,4 +1,4 @@
-package pkg
+package main
 
 // Rectangler is an interface for objects that can provide their rectangular bounds.
 type Rectangler interface {
