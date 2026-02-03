@@ -210,7 +210,7 @@ func TestBulletKillsOneInvader(t *testing.T) {
 		// Bullet positioned to hit first invader.
 		game.PlayerBullets[0] = PlayerBullet{LeftX: 110, TopY: 60, Active: true}
 
-		game.HandleBulletInvaderCollisions()
+		game.HandlePlayerBulletInvaderCollisions()
 
 		if len(game.Invaders) != 1 {
 			t.Errorf("Expected 1 invader remaining, got %d", len(game.Invaders))
@@ -235,7 +235,7 @@ func TestBulletKillsOneInvader(t *testing.T) {
 		// Bullet far from invader.
 		game.PlayerBullets[0] = PlayerBullet{LeftX: 500, TopY: 500, Active: true}
 
-		game.HandleBulletInvaderCollisions()
+		game.HandlePlayerBulletInvaderCollisions()
 
 		if len(game.Invaders) != 1 {
 			t.Errorf("Expected 1 invader remaining, got %d", len(game.Invaders))
@@ -264,7 +264,7 @@ func TestMultipleBulletsKillMultipleInvaders(t *testing.T) {
 		game.PlayerBullets[1] = PlayerBullet{LeftX: 210, TopY: 60, Active: true}
 		game.PlayerBullets[2] = PlayerBullet{LeftX: 310, TopY: 60, Active: true}
 
-		game.HandleBulletInvaderCollisions()
+		game.HandlePlayerBulletInvaderCollisions()
 
 		if len(game.Invaders) != 0 {
 			t.Errorf("Expected 0 invaders remaining, got %d", len(game.Invaders))
@@ -289,7 +289,7 @@ func TestMultipleBulletsKillMultipleInvaders(t *testing.T) {
 		game.PlayerBullets[0] = PlayerBullet{LeftX: 110, TopY: 60, Active: true}
 		game.PlayerBullets[1] = PlayerBullet{LeftX: 115, TopY: 65, Active: true}
 
-		game.HandleBulletInvaderCollisions()
+		game.HandlePlayerBulletInvaderCollisions()
 
 		// Only one invader, so only one bullet can kill it.
 		if len(game.Invaders) != 0 {
@@ -745,7 +745,7 @@ func TestPlayerWonWhenAllInvadersKilled(t *testing.T) {
 		// Position bullet to hit the only invader.
 		game.PlayerBullets[0] = PlayerBullet{LeftX: 110, TopY: 60, Active: true}
 
-		game.HandleBulletInvaderCollisions()
+		game.HandlePlayerBulletInvaderCollisions()
 
 		if !game.PlayerWon {
 			t.Error("Expected PlayerWon to be true when all invaders killed")
@@ -769,7 +769,7 @@ func TestPlayerWonWhenAllInvadersKilled(t *testing.T) {
 		}
 		game.PlayerBullets[0] = PlayerBullet{LeftX: 110, TopY: 60, Active: true}
 
-		game.HandleBulletInvaderCollisions()
+		game.HandlePlayerBulletInvaderCollisions()
 
 		if !game.PlayerWon {
 			t.Error("Expected PlayerWon to be true")
@@ -794,7 +794,7 @@ func TestPlayerWonNotSetWhenInvadersRemain(t *testing.T) {
 		// Kill only the first invader.
 		game.PlayerBullets[0] = PlayerBullet{LeftX: 110, TopY: 60, Active: true}
 
-		game.HandleBulletInvaderCollisions()
+		game.HandlePlayerBulletInvaderCollisions()
 
 		if game.PlayerWon {
 			t.Error("Expected PlayerWon to remain false when invaders remain")

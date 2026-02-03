@@ -170,7 +170,7 @@ func (g *Game) MoveInvaders() {
 	}
 }
 
-func (g *Game) HandleBulletInvaderCollisions() {
+func (g *Game) HandlePlayerBulletInvaderCollisions() {
 	for i := range g.PlayerBullets {
 		bullet := &g.PlayerBullets[i]
 		if !bullet.Active {
@@ -257,28 +257,7 @@ func (g *Game) HandlePlayerBulletShieldCollisions() {
 		if !bullet.Active {
 			continue
 		}
-
-		// Get bullet rectangle once for this bullet.
-		bx, by, bw, bh := bullet.Rectangle()
-
-		// Check collision with each shield.
-		// Loop backwards to safely remove shields during iteration.
-		for j := len(g.Shields) - 1; j >= 0; j-- {
-			shield := &g.Shields[j]
-			sx, sy, sw, sh := shield.Rectangle()
-			if CheckCollision(bx, by, bw, bh, sx, sy, sw, sh) {
-				// Deactivate bullet.
-				bullet.Active = false
-				// Reduce shield health.
-				shield.Health--
-				// Remove shield if health reaches zero.
-				if shield.Health <= 0 {
-					g.Shields = append(g.Shields[:j], g.Shields[j+1:]...)
-				}
-				// Each bullet hits at most one shield.
-				break
-			}
-		}
+		g.processBulletShieldCollision(bullet)
 	}
 }
 
@@ -288,25 +267,52 @@ func (g *Game) HandleInvaderBulletShieldCollisions() {
 		if !bullet.Active {
 			continue
 		}
+		g.processBulletShieldCollision(bullet)
+	}
+}
 
-		// Get bullet rectangle once for this bullet.
-		bx, by, bw, bh := bullet.Rectangle()
+// processBulletShieldCollision handles collision between any bullet and shields.
+// The bullet interface must provide Rectangle() and have an Active field.
+func (g *Game) processBulletShieldCollision(bullet interface {
+	Rectangle() (float32, float32, float32, float32)
+}) {
+	// Get bullet rectangle once for this bullet.
+	bx, by, bw, bh := bullet.Rectangle()
 
-		// Check collision with each shield.
-		// Loop backwards to safely remove shields during iteration.
-		for j := len(g.Shields) - 1; j >= 0; j-- {
-			shield := &g.Shields[j]
-			sx, sy, sw, sh := shield.Rectangle()
-			if CheckCollision(bx, by, bw, bh, sx, sy, sw, sh) {
-				// Deactivate bullet.
-				bullet.Active = false
-				// Reduce shield health.
-				shield.Health--
-				// Remove shield if health reaches zero.
-				if shield.Health <= 0 {
-					g.Shields = append(g.Shields[:j], g.Shields[j+1:]...)
-				}
-				// Each bullet hits at most one shield.
+	// Check collision with each shield.
+	// Loop backwards to safely remove shields during iteration.
+	for j := len(g.Shields) - 1; j >= 0; j-- {
+		shield := &g.Shields[j]
+		sx, sy, sw, sh := shield.Rectangle()
+		if CheckCollision(bx, by, bw, bh, sx, sy, sw, sh) {
+			// Deactivate bullet.
+			switch b := bullet.(type) {
+			case *PlayerBullet:
+				b.Active = false
+			case *InvaderBullet:
+				b.Active = false
+			}
+			// Reduce shield health.
+			shield.Health--
+			// Remove shield if health reaches zero.
+			if shield.Health <= 0 {
+				g.Shields = append(g.Shields[:j], g.Shields[j+1:]...)
+			}
+			// Each bullet hits at most one shield.
+			break
+		}
+	}
+}
+
+func (g *Game) HandlePlayerShooting() {
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+		for i := range g.PlayerBullets {
+			bullet := &g.PlayerBullets[i]
+			if !bullet.Active {
+				x, y := g.Player.TopMid()
+				bullet.LeftX = x - 2 // Center the bullet (assuming bullet width is 4)
+				bullet.TopY = y
+				bullet.Active = true
 				break
 			}
 		}
@@ -329,23 +335,11 @@ func (g *Game) Update() error {
 	var right = ebiten.IsKeyPressed(ebiten.KeyRight) || ebiten.IsKeyPressed(ebiten.KeyArrowRight)
 	g.Player.Move(left, right)
 
-	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
-		for i := range g.PlayerBullets {
-			bullet := &g.PlayerBullets[i]
-			if !bullet.Active {
-				x, y := g.Player.TopMid()
-				bullet.LeftX = x - 2 // Center the bullet (assuming bullet width is 4)
-				bullet.TopY = y
-				bullet.Active = true
-				break
-			}
-		}
-
-	}
+	g.HandlePlayerShooting()
 	g.MovePlayerBullets()
 	g.HandlePlayerBulletShieldCollisions()
 	g.MoveInvaderBullets()
-	g.HandleBulletInvaderCollisions()
+	g.HandlePlayerBulletInvaderCollisions()
 	g.HandleInvaderBulletPlayerCollisions()
 	g.HandleInvaderBulletShieldCollisions()
 	g.HandleInvaderShooting()
